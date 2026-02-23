@@ -1,32 +1,36 @@
-import os
-import shutil
-import time
-import sys
-from datetime import datetime
+import os                           # Thư viện để chạy lệnh hệ thống (vd: clear màn hình)
+import shutil                       # Lấy kích thước terminal để căn giữa
+import time                         # Tạo độ trễ (sleep)
+import sys                          # Thoát chương trình
+from datetime import datetime       #Lấy thời gian hiện tại
+from prettytable import prettytable #LÀM CÁI BẢNG ĐẸP =))
 
-width = shutil.get_terminal_size().columns
-os.system("cls")
+
+width = shutil.get_terminal_size().columns  # Lấy chiều rộng terminal
+os.system("cls")  # Xoá màn hình (Windows)
 
 
 def add_expense():
 
-    # CATEGORY
-    while True:
+    # ===== NHẬP CATEGORY =====
+    while True:  # Lặp đến khi nhập hợp lệ
         print("Please enter the expense category".center(width))
         category = input("My expense category is: ")
 
+        # Không cho chứa dấu cách
         if " " in category:
             print("Category cannot contain spaces!".center(width))
             time.sleep(1)
             os.system("cls")
         else:
-            break
+            break  # Hợp lệ thì thoát vòng lặp
 
-    # NAME
+    # ===== NHẬP TÊN CHI TIÊU =====
     while True:
         print("Please enter the expense name".center(width))
         name = input("My expense name is: ")
 
+        # Không cho chứa dấu cách
         if " " in name:
             print("Name cannot contain spaces!".center(width))
             time.sleep(1)
@@ -34,63 +38,79 @@ def add_expense():
         else:
             break
 
-    # AMOUNT
+    # ===== NHẬP SỐ LƯỢNG =====
     while True:
-        print("Please enter the expense amount".center(width))
-        amount = input("The amount of this expense is: ")
+        print("Please enter the expense Quantity".center(width))
+        amount = input("The Quantity of this expense is: ")
 
         try:
-            amount = int(amount)
+            amount = int(amount)  # Chuyển sang số nguyên
             break
-        except ValueError:
+        except ValueError:  # Nếu nhập không phải số
             print("The amount must be a number!")
             time.sleep(1)
             os.system("cls")
+    # ===== NHẬP SỐ TIỀN =====
+    while True:
+        print(f"Please enter how much money do you want to spend on 1x {name}".center(width))
+        price = input(f"Money i want to spend on this {name} is: ")
 
+        try: 
+            price = int(price)
+            break
+        except ValueError: 
+            print("Price should be numbers, not characters")
+            time.sleep(1)
+            os.system("cls")
+
+    # ===== GHI VÀO FILE =====
+    # Format lưu: category|name|amount
+    # Dùng "|" làm dấu phân cách
     with open("expenses.txt", "a", encoding="utf-8") as file:
-        file.write(f"{category}|{name}|{amount}\n")
+        file.write(f"{category}|{name}|{amount}|{price}\n")
+    total_price = amount * price
 
+    print(f"Total cost for {amount}x {name} is {total_price} VND")
     print("Expense added successfully!")
-    time.sleep(1)
+    time.sleep(2)
     os.system("cls")
 
 
+from prettytable import PrettyTable
 
 def view_expenses():
-    print("Press Enter to view all expenses")
-    input()
-
     try:
+        table = PrettyTable()
+        table.field_names = ["Category", "Name", "Quantity", "Unit Price", "Total (VND)"] #Tạo cột hàng ngang theo từng DANH MỤC
+
         with open("expenses.txt", "r", encoding="utf-8") as file:
             for line in file:
                 line = line.strip()
-
                 if not line:
                     continue
 
                 parts = line.split("|")
-
-                if len(parts) != 3:
+                if len(parts) != 4:
                     continue
 
-                category, name, amount = parts
+                category, name, quantity, unit_price = parts
 
-                os.system("cls")
-                print("Category:", category,
-                      "| Expense:", name,
-                      "| Amount:", amount, "VND")
-                input()
-                os.system("cls")
+                quantity = int(quantity)
+                unit_price = int(unit_price)
 
-    except FileNotFoundError:
-        os.system("cls")
-        print("Cannot locate file. Have you added any expenses yet?".center(width))
+                total_price = quantity * unit_price
+
+                table.add_row([category, name, quantity, unit_price, total_price])
+
+        print(table)
         input()
 
+    except FileNotFoundError:
+        print("No data found.")
 
 def statistics():
-    total_money = 0
-    stats = {}
+    total_money = 0  # Tổng tiền đã chi
+    stats = {}  # Dictionary lưu tổng tiền theo từng category
 
     try:
         with open("expenses.txt", "r", encoding="utf-8") as file:
@@ -102,21 +122,38 @@ def statistics():
 
                 parts = line.split("|")
 
-                if len(parts) != 3:
+                if len(parts) != 4:
                     continue
 
-                category, name, amount = parts
-                amount = int(amount)
+                category, name, amount, price = parts
 
-                total_money += amount
-                stats[category] = stats.get(category, 0) + amount
+                amount = int(amount)
+                price = int(price)
+
+                total_price = amount * price
+                
+                
+                # Cộng dồn theo category
+                # stats.get(category, 0):
+                # Nếu đã có category → lấy giá trị cũ
+                # Nếu chưa có → mặc định là 0
+                
+                
+                total_money += total_price
+                stats[category] = stats.get(category, 0) + total_price
+
+
+                
+                
 
         print("Total money spent:", total_money, "VND")
         print("\nStatistics by category:")
 
+        # In tổng tiền từng category
         for category, total in stats.items():
-            print(category, ":", total)
+            print(f"{category}: {total} VND")
 
+        # Tìm category chi nhiều nhất
         max_category = None
         max_amount = 0
 
@@ -125,7 +162,7 @@ def statistics():
                 max_amount = total
                 max_category = category
 
-        print("\nHighest spending category:", max_category, "-", max_amount, "VND")
+        print("\nHighest spending category:", max_category, "=", max_amount, "VND")
         input()
 
     except FileNotFoundError:
@@ -134,6 +171,7 @@ def statistics():
         print("Data format error.")
 
 
+# ===== MENU CHÍNH =====
 while True:
     print("_____________________".center(width))
     print(("Time: " + datetime.now().strftime("%H:%M:%S")).center(width))
@@ -170,4 +208,4 @@ while True:
         os.system("cls")
         print("Goodbye! See you next time.".center(width))
         input()
-        sys.exit()
+        sys.exit()  # Thoát chương trình
